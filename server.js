@@ -44,6 +44,47 @@ app.post('/register',async(req,res) =>{
     })
 })
 
+app.post('/login', (req, res) => {
+    const { username, password } = req.body;
+
+    if (!username || !password) {
+        return res.status(400).json({ message: 'Username and password are required' });
+    }
+
+    // 1. ค้นหา User ในฐานข้อมูลจาก Username
+    const sql = `SELECT * FROM user WHERE username = ?`;
+    
+    db.get(sql, [username], async (err, user) => {
+        if (err) {
+            return res.status(500).json({ message: 'Database error' });
+        }
+        
+        // 2. ถ้าไม่เจอ User
+        if (!user) {
+            return res.status(401).json({ message: 'Invalid username or password' });
+        }
+
+        try {
+            // 3. เปรียบเทียบรหัสผ่านที่ส่งมา กับรหัสผ่านที่ Hash ไว้ใน DB
+            const isMatch = await bcrypt.compare(password, user.password);
+            
+            if (!isMatch) {
+                return res.status(401).json({ message: 'Invalid username or password' });
+            }
+
+            // 4. ถ้าผ่านหมด ให้ตอบกลับ (ในอนาคตคุณอาจจะส่ง JWT Token ตรงนี้)
+            res.status(200).json({ 
+                message: 'Login successful', 
+                user: { id: user.id, username: user.username } 
+            });
+
+        } catch (error) {
+            res.status(500).json({ message: 'Error during password verification' });
+        }
+    });
+});
+
+
 app.listen(port,()=>{
     console.log(`Server running on port ${port}`);
 });
